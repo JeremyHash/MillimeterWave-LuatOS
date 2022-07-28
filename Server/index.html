@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>毫米波雷达状态信息</title>
+</head>
+
+<body>
+    <div>
+        <h1>毫米波雷达状态信息</h1>
+        <p>address: ws://airtest.openluat.com:8083/mqtt</p>
+        <p id="topicP">topic: 暂无</p>
+    </div>
+    <input id="deviceIDInput" type="text">
+    <input id="button" type="button" value="开始">
+    <br>
+    <span id="hasPerson">
+        暂无数据
+    </span>
+    <div id="messageBox">
+        暂无数据
+    </div>
+    <div id="copyright">Copyright © 2022 AirM2M Inc. 保留所有权利。</div>
+</body>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+    }
+
+    #messageBox {
+        height: 100%;
+        width: 100%;
+        border-color: red;
+        border-width: 2px;
+        border-style: solid;
+    }
+
+    #hasPerson {
+        color: red;
+        font-size: xx-large;
+        height: 100%;
+        border-color: black;
+        border-width: 2px;
+        border-style: solid;
+    }
+
+    #copyright {
+        position: absolute;
+        bottom: 0;
+        text-align: center;
+        left: calc(40%);
+    }
+</style>
+<script src="./mqtt.min.js"></script>
+<script src="./jquery-3.6.0.js"></script>
+
+
+<script>
+    const options = {
+        clean: true,
+        connectTimeout: 4000,
+        clientId: 'emqx_test-Jeremy' + Date.now(),
+    }
+    let CHECK_COUNT = 0
+    let hasPerson
+    let messageBox
+    let deviceIDInput
+    let button
+    let topicP
+
+    let client
+
+    function ifHasPerson(conditin) {
+        if (conditin) {
+            hasPerson.css("color", "red")
+            hasPerson.text("有人")
+        } else {
+            hasPerson.css("color", "black")
+            hasPerson.text("无人")
+        }
+    }
+    $(window).ready(function () {
+        deviceIDInput = $("#deviceIDInput")
+        button = $("#button")
+        messageBox = $("#messageBox")
+        hasPerson = $("#hasPerson")
+        topicP = $("#topicP")
+
+        button.on("click", function () {
+            let status = button.val()
+            if (status === "开始") {
+                let deviceID = deviceIDInput.val()
+                if (deviceID === "") {
+                    console.log("空")
+                    return
+                }
+                console.log(deviceID)
+                let topic = '/luatos/esp32c3/MillimeterWave/' + deviceID
+                topicP.text("topic: " + topic)
+                client = mqtt.connect('ws://airtest.openluat.com:8083/mqtt', options)
+                client.on('message', function (topic, message) {
+                    let content = message.toString()
+                    console.log(content)
+                    let infoObj = JSON.parse(content)
+                    if (typeof infoObj.targetStatus === "undefined") {
+                        console.log("解析数据格式失败")
+                        return
+                    }
+                    messageBox.html(`<p>目标状态：${infoObj.targetStatus} </p>
+            <p>运动目标距离：${infoObj.motionTargetDistance}</p>
+            <p>运动目标能量：${infoObj.motionTargetEnergy}</p>
+            <p>静止目标距离：${infoObj.stationaryTargetDistance}</p>
+            <p>静止目标能量：${infoObj.stationaryTargetEnergy}</p>`)
+                    if (parseInt(infoObj.motionTargetEnergy) > 60) {
+                        if (CHECK_COUNT < 5) {
+                            CHECK_COUNT++
+                        } else {
+                            ifHasPerson(true)
+                        }
+                    }
+                    else if (parseInt(infoObj.stationaryTargetEnergy) > 60) {
+                        if (CHECK_COUNT < 5) {
+                            CHECK_COUNT++
+                        } else {
+                            ifHasPerson(true)
+                        }
+                    } else {
+                        CHECK_COUNT = 0
+                        ifHasPerson(false)
+                    }
+                })
+                client.on('connect', function () {
+                    console.log('Connect To MQTTServer OK')
+                    client.subscribe(topic, { qos: 0 }, function (err) {
+                        if (err) {
+                            console.error(err)
+                        } else {
+                            console.log('subscribe OK')
+                            button.val("停止")
+                            deviceIDInput.attr("disabled", "disabled")
+                        }
+                    })
+                })
+            } else {
+                client.end()
+                button.val("开始")
+                topicP.text("topic: 暂无")
+                messageBox.text("暂无数据")
+                hasPerson.text("暂无数据")
+                deviceIDInput.removeAttr("disabled")
+            }
+        }
+        )
+    })
+</script>
+
+</html>
