@@ -68,15 +68,18 @@ end
 
 if SEND_TO_SERVER == true then
     sys.taskInit(function()
-
         wlan.init()
 
         wlan.setMode(wlan.STATION)
         -- wlan.connect("Xiaomi_AX6000", "Air123456", 1)
         wlan.connect("hgz", "12345678", 1)
 
-        local result, data = sys.waitUntil("IP_READY")
+        local result, data = sys.waitUntil("IP_READY", 10000)
         log.info("wlan", "IP_READY", result, data)
+        if result == false then
+            log.error("WIFI", "连接失败，正在重启")
+            rtos.reboot()
+        end
 
         -- init	function: 420210FA
         -- tart	function: 42021642
@@ -129,7 +132,8 @@ sys.taskInit(function()
     end
 
     gpio6 = gpio.setup(6)
-    gpio13 = gpio.setup(13, 0)
+    gpio12 = gpio.setup(12, 1)
+    gpio13 = gpio.setup(13, 1)
 
     -- gpio.setup(12, function(val)
     --     log.info("IO12", val)
@@ -168,7 +172,7 @@ sys.taskInit(function()
             targetInfo["motionTargetEnergy"] = tonumber(motionTargetEnergy, 16)
             targetInfo["stationaryTargetDistance"] = tonumber(MSB_LSB_SWITCH(stationaryTargetDistance), 16) / 100 .. "m"
             targetInfo["stationaryTargetEnergy"] = tonumber(stationaryTargetEnergy, 16)
-            targetInfo["io6"] = tonumber(gpio6())
+            targetInfo["io6"] = gpio6()
 
             local infoString = json.encode(targetInfo)
             -- local info = targetStatusTable[targetStatus] .. ",运动目标距离" ..

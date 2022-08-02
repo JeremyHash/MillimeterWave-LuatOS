@@ -17,9 +17,12 @@
     <input id="deviceIDInput" type="text">
     <input id="button" type="button" value="开始">
     <br>
-    <span id="hasPerson">
-        暂无数据
-    </span>
+    <div>
+        <p id="hasPersonStatusLED"></p>
+        <p id="hasPerson">
+            暂无数据
+        </p>
+    </div>
     <div id="messageBox">
         暂无数据
     </div>
@@ -39,13 +42,19 @@
         border-style: solid;
     }
 
+    #hasPersonStatusLED {
+        display: inline-block;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        background-color: green;
+    }
+
     #hasPerson {
-        color: red;
+        display: inline-block;
+        color: green;
         font-size: xx-large;
         height: 100%;
-        border-color: black;
-        border-width: 2px;
-        border-style: solid;
     }
 
     #copyright {
@@ -67,6 +76,7 @@
     }
     let CHECK_COUNT = 0
     let hasPerson
+    let hasPersonStatusLED
     let messageBox
     let deviceIDInput
     let button
@@ -77,9 +87,11 @@
     function ifHasPerson(conditin) {
         if (conditin) {
             hasPerson.css("color", "red")
+            hasPersonStatusLED.css("background-color", "red")
             hasPerson.text("有人")
         } else {
-            hasPerson.css("color", "black")
+            hasPerson.css("color", "green")
+            hasPersonStatusLED.css("background-color", "green")
             hasPerson.text("无人")
         }
     }
@@ -88,6 +100,7 @@
         button = $("#button")
         messageBox = $("#messageBox")
         hasPerson = $("#hasPerson")
+        hasPersonStatusLED = $("#hasPersonStatusLED")
         topicP = $("#topicP")
 
         button.on("click", function () {
@@ -114,25 +127,31 @@
             <p>运动目标距离：${infoObj.motionTargetDistance}</p>
             <p>运动目标能量：${infoObj.motionTargetEnergy}</p>
             <p>静止目标距离：${infoObj.stationaryTargetDistance}</p>
-            <p>静止目标能量：${infoObj.stationaryTargetEnergy}</p>
-            <p>IO：${infoObj.io6}</p>`)
-                    if (parseInt(infoObj.motionTargetEnergy) > 60) {
-                        if (CHECK_COUNT < 5) {
-                            CHECK_COUNT++
-                        } else {
-                            ifHasPerson(true)
-                        }
-                    }
-                    else if (parseInt(infoObj.stationaryTargetEnergy) > 60) {
-                        if (CHECK_COUNT < 5) {
-                            CHECK_COUNT++
-                        } else {
-                            ifHasPerson(true)
-                        }
+            <p>静止目标能量：${infoObj.stationaryTargetEnergy}</p>`)
+                    // if (parseInt(infoObj.motionTargetEnergy) > 60) {
+                    //     if (CHECK_COUNT < 5) {
+                    //         CHECK_COUNT++
+                    //     } else {
+                    //         ifHasPerson(true)
+                    //     }
+                    // }
+                    // else if (parseInt(infoObj.stationaryTargetEnergy) > 60) {
+                    //     if (CHECK_COUNT < 5) {
+                    //         CHECK_COUNT++
+                    //     } else {
+                    //         ifHasPerson(true)
+                    //     }
+                    // } else {
+                    //     CHECK_COUNT = 0
+                    //     ifHasPerson(false)
+                    // }
+
+                    if (infoObj.io6 == "1") {
+                        ifHasPerson(true)
                     } else {
-                        CHECK_COUNT = 0
                         ifHasPerson(false)
                     }
+
                 })
                 client.on('connect', function () {
                     console.log('Connect To MQTTServer OK')
