@@ -14,7 +14,7 @@ targetStatusTable = {
 
 mqttClient = nil
 
-DEVICE_ID = "002"
+DEVICE_ID = "003"
 MQTT_TOPIC = "/luatos/esp32c3/MillimeterWave/" .. DEVICE_ID
 
 SEND_TO_SERVER = true
@@ -72,7 +72,8 @@ if SEND_TO_SERVER == true then
         wlan.init()
 
         wlan.setMode(wlan.STATION)
-        wlan.connect("Xiaomi_AX6000", "Air123456", 1)
+        -- wlan.connect("Xiaomi_AX6000", "Air123456", 1)
+        wlan.connect("hgz", "12345678", 1)
 
         local result, data = sys.waitUntil("IP_READY")
         log.info("wlan", "IP_READY", result, data)
@@ -127,8 +128,16 @@ sys.taskInit(function()
         sys.waitUntil("MQTT_CONNECT_OK")
     end
 
-    gpio12 = gpio.setup(12, 0)
+    gpio6 = gpio.setup(6)
     gpio13 = gpio.setup(13, 0)
+
+    -- gpio.setup(12, function(val)
+    --     log.info("IO12", val)
+    -- end)
+
+    sys.timerLoopStart(function()
+        print("状态" .. gpio6())
+    end, 1000)
 
     SLAVE_UARTID = 1
 
@@ -159,6 +168,7 @@ sys.taskInit(function()
             targetInfo["motionTargetEnergy"] = tonumber(motionTargetEnergy, 16)
             targetInfo["stationaryTargetDistance"] = tonumber(MSB_LSB_SWITCH(stationaryTargetDistance), 16) / 100 .. "m"
             targetInfo["stationaryTargetEnergy"] = tonumber(stationaryTargetEnergy, 16)
+            targetInfo["io6"] = tonumber(gpio6())
 
             local infoString = json.encode(targetInfo)
             -- local info = targetStatusTable[targetStatus] .. ",运动目标距离" ..
@@ -166,26 +176,26 @@ sys.taskInit(function()
             --                  tonumber(motionTargetEnergy, 16) .. ",静止目标距离" ..
             --                  tonumber(MSB_LSB_SWITCH(stationaryTargetDistance), 16) / 100 .. "m" ..
             --                  ",静止目标能量" .. tonumber(stationaryTargetEnergy, 16)
-            if tonumber(motionTargetEnergy, 16) > 60 then
-                if CHECK_COUNT < 5 then
-                    CHECK_COUNT = CHECK_COUNT + 1
-                else
-                    gpio12(1)
-                    gpio13(1)
-                end
-            elseif tonumber(stationaryTargetEnergy, 16) > 60 then
-                if CHECK_COUNT < 5 then
-                    CHECK_COUNT = CHECK_COUNT + 1
-                else
-                    gpio12(1)
-                    gpio13(1)
-                end
-            else
-                CHECK_COUNT = 0
-                gpio12(0)
-                gpio13(0)
-            end
-            log.info("info", infoString)
+            -- if tonumber(motionTargetEnergy, 16) > 60 then
+            --     if CHECK_COUNT < 5 then
+            --         CHECK_COUNT = CHECK_COUNT + 1
+            --     else
+            --         gpio12(1)
+            --         gpio13(1)
+            --     end
+            -- elseif tonumber(stationaryTargetEnergy, 16) > 60 then
+            --     if CHECK_COUNT < 5 then
+            --         CHECK_COUNT = CHECK_COUNT + 1
+            --     else
+            --         gpio12(1)
+            --         gpio13(1)
+            --     end
+            -- else
+            --     CHECK_COUNT = 0
+            --     gpio12(0)
+            --     gpio13(0)
+            -- end
+            -- log.info("info", infoString)
             sys.publish("TARGET_INFO", infoString)
             return
         end
