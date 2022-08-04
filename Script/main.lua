@@ -14,12 +14,34 @@ targetStatusTable = {
 
 mqttClient = nil
 
-DEVICE_ID = "003"
+DEVICE_ID = "Jeremy"
 MQTT_TOPIC = "/luatos/esp32c3/MillimeterWave/" .. DEVICE_ID
 
 SEND_TO_SERVER = true
 
 CHECK_COUNT = 0
+
+function printTable(tbl, lv)
+    lv = lv and lv .. "\t" or ""
+    print(lv .. "{")
+    for k, v in pairs(tbl) do
+        if type(k) == "string" then
+            k = "\"" .. k .. "\""
+        end
+        if "string" == type(v) then
+            local qv = string.match(string.format("%q", v), ".(.*).")
+            v = qv == v and '"' .. v .. '"' or "'" .. v:toHex() .. "'"
+        end
+        if type(v) == "table" then
+            print(lv .. "\t" .. tostring(k) .. " = ")
+            printTable(v, lv)
+        else
+
+            print(lv .. "\t" .. tostring(k) .. " = " .. tostring(v) .. ",")
+        end
+    end
+    print(lv .. "},")
+end
 
 function setMaxDistanceAndNoPersonDuration(maxMotionDistanceDoor, maxStationaryDistanceDoor, noPersonDuration)
     uart.write(SLAVE_UARTID,
@@ -48,6 +70,26 @@ function setDistanceDoorSensitivity(disranceDoor, MotionSensitivity, StationaryS
     end
 end
 
+function openEngineeringMode()
+    uart.write(SLAVE_UARTID, string.fromHex("FDFCFBFA0200620004030201"))
+    local waitRes = sys.waitUntil("openEngineeringMode_OK", 2000)
+    if waitRes == true then
+        return true
+    else
+        return false
+    end
+end
+
+function closeEngineeringMode()
+    uart.write(SLAVE_UARTID, string.fromHex("FDFCFBFA0200630004030201"))
+    local waitRes = sys.waitUntil("closeEngineeringMode_OK", 2000)
+    if waitRes == true then
+        return true
+    else
+        return false
+    end
+end
+
 function reverseTable(tab)
     local tmp = {}
     for i = 1, #tab do
@@ -68,11 +110,15 @@ end
 
 if SEND_TO_SERVER == true then
     sys.taskInit(function()
+        sys.wait(2000)
         wlan.init()
-
         wlan.setMode(wlan.STATION)
-        -- wlan.connect("Xiaomi_AX6000", "Air123456", 1)
-        wlan.connect("hgz", "12345678", 1)
+        local SSID, PASSWD = "Xiaomi_AX6000", "Air123456"
+        -- local SSID, PASSWD = "hgz", "12345678"
+
+        log.info("SSID", SSID)
+        log.info("PASSWD", PASSWD)
+        wlan.connect(SSID, PASSWD, 1)
 
         local result, data = sys.waitUntil("IP_READY", 10000)
         log.info("wlan", "IP_READY", result, data)
@@ -135,14 +181,6 @@ sys.taskInit(function()
     gpio12 = gpio.setup(12, 1)
     gpio13 = gpio.setup(13, 1)
 
-    -- gpio.setup(12, function(val)
-    --     log.info("IO12", val)
-    -- end)
-
-    sys.timerLoopStart(function()
-        print("状态" .. gpio6())
-    end, 1000)
-
     SLAVE_UARTID = 1
 
     local targetInfo = {}
@@ -155,6 +193,65 @@ sys.taskInit(function()
         local hexData = string.toHex(data)
         -- log.debug("SLAVE_DATA", hexData)
         local s, e
+
+        -- F4F3F2F11B0001AA0326011696006406060000080E160B06000064616461465500F8F7F6F5
+        s, e = string.find(hexData, "F4F3F2F11B0001AA", 1, true)
+        if s == 1 and e == 16 then
+            local info = string.sub(hexData, 17, 62)
+            local targetStatus = string.sub(info, 1, 2)
+            local motionTargetDistance = string.sub(info, 3, 6)
+            local motionTargetEnergy = string.sub(info, 7, 8)
+            local stationaryTargetDistance = string.sub(info, 9, 12)
+            local stationaryTargetEnergy = string.sub(info, 13, 14)
+            local maxMotionDistanceDoor = string.sub(info, 15, 16)
+            local maxStationaryDistanceDoor = string.sub(info, 17, 18)
+            local motionDistanceDoor0Energy = string.sub(info, 19, 20)
+            local motionDistanceDoor1Energy = string.sub(info, 21, 22)
+            local motionDistanceDoor2Energy = string.sub(info, 23, 24)
+            local motionDistanceDoor3Energy = string.sub(info, 25, 26)
+            local motionDistanceDoor4Energy = string.sub(info, 27, 28)
+            local motionDistanceDoor5Energy = string.sub(info, 29, 30)
+            local motionDistanceDoor6Energy = string.sub(info, 31, 32)
+            local stationaryDistanceDoor0Energy = string.sub(info, 33, 34)
+            local stationaryDistanceDoor1Energy = string.sub(info, 35, 36)
+            local stationaryDistanceDoor2Energy = string.sub(info, 37, 38)
+            local stationaryDistanceDoor3Energy = string.sub(info, 39, 40)
+            local stationaryDistanceDoor4Energy = string.sub(info, 41, 42)
+            local stationaryDistanceDoor5Energy = string.sub(info, 43, 44)
+            local stationaryDistanceDoor6Energy = string.sub(info, 45, 46)
+
+            targetInfo["type"] = "EngineeringMode"
+            targetInfo["targetStatus"] = targetStatusTable[targetStatus]
+            targetInfo["motionTargetDistance"] = tonumber(MSB_LSB_SWITCH(motionTargetDistance), 16) / 100 .. "m"
+            targetInfo["motionTargetEnergy"] = tonumber(motionTargetEnergy, 16)
+            targetInfo["stationaryTargetDistance"] = tonumber(MSB_LSB_SWITCH(stationaryTargetDistance), 16) / 100 .. "m"
+            targetInfo["stationaryTargetEnergy"] = tonumber(stationaryTargetEnergy, 16)
+            targetInfo["maxMotionDistanceDoor"] = tonumber(maxMotionDistanceDoor, 16)
+            targetInfo["maxStationaryDistanceDoor"] = tonumber(maxStationaryDistanceDoor, 16)
+            targetInfo["m0Energy"] = tonumber(motionDistanceDoor0Energy, 16)
+            targetInfo["m1Energy"] = tonumber(motionDistanceDoor1Energy, 16)
+            targetInfo["m2Energy"] = tonumber(motionDistanceDoor2Energy, 16)
+            targetInfo["m3Energy"] = tonumber(motionDistanceDoor3Energy, 16)
+            targetInfo["m4Energy"] = tonumber(motionDistanceDoor4Energy, 16)
+            targetInfo["m5Energy"] = tonumber(motionDistanceDoor5Energy, 16)
+            targetInfo["m6Energy"] = tonumber(motionDistanceDoor6Energy, 16)
+
+            targetInfo["s0Energy"] = tonumber(stationaryDistanceDoor0Energy, 16)
+            targetInfo["s1Energy"] = tonumber(stationaryDistanceDoor1Energy, 16)
+            targetInfo["s2Energy"] = tonumber(stationaryDistanceDoor2Energy, 16)
+            targetInfo["s3Energy"] = tonumber(stationaryDistanceDoor3Energy, 16)
+            targetInfo["s4Energy"] = tonumber(stationaryDistanceDoor4Energy, 16)
+            targetInfo["s5Energy"] = tonumber(stationaryDistanceDoor5Energy, 16)
+            targetInfo["s6Energy"] = tonumber(stationaryDistanceDoor6Energy, 16)
+
+            targetInfo["io6"] = gpio6()
+
+            local infoString = json.encode(targetInfo)
+            -- printTable(targetInfo)
+            sys.publish("TARGET_INFO", infoString)
+            return
+        end
+
         s, e = string.find(hexData, "F4F3F2F10B0002AA", 1, true)
         if s == 1 and e == 16 then
             local info = string.sub(hexData, 17, 30)
@@ -167,6 +264,7 @@ sys.taskInit(function()
             -- log.info("info", info, targetStatus, motionTargetDistance, motionTargetEnergy, stationaryTargetDistance,
             --     stationaryTargetEnergy)
 
+            targetInfo["type"] = "BasicMode"
             targetInfo["targetStatus"] = targetStatusTable[targetStatus]
             targetInfo["motionTargetDistance"] = tonumber(MSB_LSB_SWITCH(motionTargetDistance), 16) / 100 .. "m"
             targetInfo["motionTargetEnergy"] = tonumber(motionTargetEnergy, 16)
@@ -220,6 +318,16 @@ sys.taskInit(function()
 
         if hexData == "FDFCFBFA0400FE01000004030201" then
             sys.publish("DISABLE_SETTING_OK")
+            return
+        end
+
+        if hexData == "FDFCFBFA04006201000004030201" then
+            sys.publish("openEngineeringMode_OK")
+            return
+        end
+
+        if hexData == "FDFCFBFA04006301000004030201" then
+            sys.publish("closeEngineeringMode_OK")
             return
         end
 
@@ -290,6 +398,16 @@ sys.taskInit(function()
         MSB_LSB_SWITCH(maxDistanceDoorNum), MSB_LSB_SWITCH(maxMotionDistanceDoor),
         MSB_LSB_SWITCH(maxStationaryDistanceDoor), MSB_LSB_SWITCH(DistanceDoorMotionSensitivity),
         MSB_LSB_SWITCH(DistanceDoorStationarySensitivity), MSB_LSB_SWITCH(NoPersonDuration)))
+    log.info("cmd", "打开工程模式")
+    if openEngineeringMode() ~= true then
+        log.error("cmd", "打开工程模式 FAIL")
+        rtos.reboot()
+    end
+    -- log.info("cmd", "关闭工程模式")
+    -- if closeEngineeringMode() ~= true then
+    --     log.error("cmd", "关闭工程模式 FAIL")
+    --     rtos.reboot()
+    -- end
     log.info("cmd", "结束配置")
     uart.write(SLAVE_UARTID, string.fromHex("FDFCFBFA0200FE0004030201"))
     waitRes = sys.waitUntil("DISABLE_SETTING_OK")

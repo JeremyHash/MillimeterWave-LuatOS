@@ -26,6 +26,14 @@
     <div id="messageBox">
         暂无数据
     </div>
+    <div style="position:relative;height:20vh;width:40vh">
+        <canvas id="mChartCanvas"></canvas>
+    </div>
+
+    <div style="position:relative;height:20vh;width:40vh">
+        <canvas id="sChartCanvas"></canvas>
+    </div>
+
     <div id="copyright">Copyright © 2022 AirM2M Inc. 保留所有权利。</div>
 </body>
 <style>
@@ -57,6 +65,7 @@
         height: 100%;
     }
 
+
     #copyright {
         position: absolute;
         bottom: 0;
@@ -66,6 +75,7 @@
 </style>
 <script src="./mqtt.min.js"></script>
 <script src="./jquery-3.6.0.js"></script>
+<script src="./chart.js"></script>
 
 
 <script>
@@ -81,8 +91,15 @@
     let deviceIDInput
     let button
     let topicP
+    let mChartCanvas
+    let sChartCanvas
+
 
     let client
+    let mdata
+    let sdata
+    let mChart
+    let sChart
 
     function ifHasPerson(conditin) {
         if (conditin) {
@@ -95,6 +112,13 @@
             hasPerson.text("无人")
         }
     }
+
+    function updateChartData(minfo, sinfo) {
+        mdata.datasets[0].data = minfo
+        sdata.datasets[0].data = sinfo
+        mChart.update()
+        sChart.update()
+    }
     $(window).ready(function () {
         deviceIDInput = $("#deviceIDInput")
         button = $("#button")
@@ -102,6 +126,73 @@
         hasPerson = $("#hasPerson")
         hasPersonStatusLED = $("#hasPersonStatusLED")
         topicP = $("#topicP")
+        mChartCanvas = $("#mChartCanvas")
+        sChartCanvas = $("#sChartCanvas")
+
+
+
+        const labels = [0, 1, 2, 3, 4, 5];
+        mdata = {
+            labels: labels,
+            datasets: [
+                {
+                    label: '运动距离门能量',
+                    data: [0, 0, 0, 0, 0, 0],
+                    borderColor: "rgb(255, 99, 132)",
+                    backgroundColor: "rgb(255, 99, 132)",
+
+                }
+            ]
+        }
+
+        sdata = {
+            labels: labels,
+            datasets: [
+                {
+                    label: '静止距离门能量',
+                    data: [0, 0, 0, 0, 0, 0],
+                    borderColor: "rgb(255, 99, 132)",
+                    backgroundColor: "rgb(255, 99, 132)",
+                }
+            ]
+        }
+
+        const mconfig = {
+            type: 'line',
+            data: mdata,
+            options: {
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100,
+                    }
+                }
+            },
+        }
+
+        const sconfig = {
+            type: 'line',
+            data: sdata,
+            options: {
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100,
+                    }
+                }
+            },
+        }
+
+        mChart = new Chart(
+            mChartCanvas,
+            mconfig
+        )
+
+        sChart = new Chart(
+            sChartCanvas,
+            sconfig
+        )
+
 
         button.on("click", function () {
             let status = button.val()
@@ -127,7 +218,9 @@
             <p>运动目标距离：${infoObj.motionTargetDistance}</p>
             <p>运动目标能量：${infoObj.motionTargetEnergy}</p>
             <p>静止目标距离：${infoObj.stationaryTargetDistance}</p>
-            <p>静止目标能量：${infoObj.stationaryTargetEnergy}</p>`)
+            <p>静止目标能量：${infoObj.stationaryTargetEnergy}</p>
+            <p>运动距离门能量(0-6)：${infoObj.m0Energy},${infoObj.m1Energy},${infoObj.m2Energy},${infoObj.m3Energy},${infoObj.m4Energy},${infoObj.m5Energy}</p>
+            <p>静止距离门能量(0-6)：${infoObj.s0Energy},${infoObj.s1Energy},${infoObj.s2Energy},${infoObj.s3Energy},${infoObj.s4Energy},${infoObj.s5Energy}</p>`)
                     // if (parseInt(infoObj.motionTargetEnergy) > 60) {
                     //     if (CHECK_COUNT < 5) {
                     //         CHECK_COUNT++
@@ -151,6 +244,8 @@
                     } else {
                         ifHasPerson(false)
                     }
+
+                    updateChartData([infoObj.m0Energy, infoObj.m1Energy, infoObj.m2Energy, infoObj.m3Energy, infoObj.m4Energy, infoObj.m5Energy], [infoObj.s0Energy, infoObj.s1Energy, infoObj.s2Energy, infoObj.s3Energy, infoObj.s4Energy, infoObj.s5Energy])
 
                 })
                 client.on('connect', function () {
