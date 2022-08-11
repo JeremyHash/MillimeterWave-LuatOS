@@ -16,6 +16,8 @@
     </div>
     <input id="deviceIDInput" type="text">
     <input id="button" type="button" value="开始">
+    <input id="saveLog" type="button" value="保存日志">
+    <input id="resetLog" type="button" value="清空日志">
     <br>
     <div>
         <p id="hasPersonStatusLED"></p>
@@ -84,12 +86,13 @@
         connectTimeout: 4000,
         clientId: 'emqx_test-Jeremy' + Date.now(),
     }
-    let CHECK_COUNT = 0
     let hasPerson
     let hasPersonStatusLED
     let messageBox
     let deviceIDInput
     let button
+    let saveLog
+    let resetLog
     let topicP
     let mChartCanvas
     let sChartCanvas
@@ -100,6 +103,8 @@
     let sdata
     let mChart
     let sChart
+
+    let dataBuff = ""
 
     function ifHasPerson(conditin) {
         if (conditin) {
@@ -122,14 +127,14 @@
     $(window).ready(function () {
         deviceIDInput = $("#deviceIDInput")
         button = $("#button")
+        saveLog = $("#saveLog")
+        resetLog = $("#resetLog")
         messageBox = $("#messageBox")
         hasPerson = $("#hasPerson")
         hasPersonStatusLED = $("#hasPersonStatusLED")
         topicP = $("#topicP")
         mChartCanvas = $("#mChartCanvas")
         sChartCanvas = $("#sChartCanvas")
-
-
 
         const labels = [0, 1, 2, 3, 4, 5];
         mdata = {
@@ -194,6 +199,19 @@
         )
 
 
+        saveLog.on("click", function () {
+            let logFile = new Blob([dataBuff], { type: "text/plain" })
+            let link = document.createElement("a")
+            link.href = window.URL.createObjectURL(logFile)
+            link.download = "Jeremy.log"
+            link.click()
+            window.URL.revokeObjectURL(link.href)
+        })
+
+        resetLog.on("click", function () {
+            dataBuff = ""
+        })
+
         button.on("click", function () {
             let status = button.val()
             if (status === "开始") {
@@ -208,7 +226,8 @@
                 client = mqtt.connect('ws://airtest.openluat.com:8083/mqtt', options)
                 client.on('message', function (topic, message) {
                     let content = message.toString()
-                    console.log(content)
+                    // console.log(content)
+                    dataBuff = dataBuff + new Date().toLocaleString() + " " + content + "\r\n"
                     let infoObj = JSON.parse(content)
                     if (typeof infoObj.targetStatus === "undefined") {
                         console.log("解析数据格式失败")
@@ -221,24 +240,6 @@
             <p>静止目标能量：${infoObj.stationaryTargetEnergy}</p>
             <p>运动距离门能量(0-6)：${infoObj.m0Energy},${infoObj.m1Energy},${infoObj.m2Energy},${infoObj.m3Energy},${infoObj.m4Energy},${infoObj.m5Energy}</p>
             <p>静止距离门能量(0-6)：${infoObj.s0Energy},${infoObj.s1Energy},${infoObj.s2Energy},${infoObj.s3Energy},${infoObj.s4Energy},${infoObj.s5Energy}</p>`)
-                    // if (parseInt(infoObj.motionTargetEnergy) > 60) {
-                    //     if (CHECK_COUNT < 5) {
-                    //         CHECK_COUNT++
-                    //     } else {
-                    //         ifHasPerson(true)
-                    //     }
-                    // }
-                    // else if (parseInt(infoObj.stationaryTargetEnergy) > 60) {
-                    //     if (CHECK_COUNT < 5) {
-                    //         CHECK_COUNT++
-                    //     } else {
-                    //         ifHasPerson(true)
-                    //     }
-                    // } else {
-                    //     CHECK_COUNT = 0
-                    //     ifHasPerson(false)
-                    // }
-
                     if (infoObj.io6 == "1") {
                         ifHasPerson(true)
                     } else {
