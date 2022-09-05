@@ -84,7 +84,7 @@
     const options = {
         clean: true,
         connectTimeout: 4000,
-        clientId: 'emqx_test-Jeremy' + Date.now(),
+        clientId: 'MillimeterWave-' + Date.now(),
     }
     let hasPerson
     let hasPersonStatusLED
@@ -203,7 +203,7 @@
             let logFile = new Blob([dataBuff], { type: "text/plain" })
             let link = document.createElement("a")
             link.href = window.URL.createObjectURL(logFile)
-            link.download = "Jeremy.log"
+            link.download = "MillimeterWave.log"
             link.click()
             window.URL.revokeObjectURL(link.href)
         })
@@ -233,21 +233,34 @@
                         console.log("解析数据格式失败")
                         return
                     }
-                    messageBox.html(`<p>目标状态：${infoObj.targetStatus} </p>
+                    if (infoObj.mod === "101") {
+                        if (infoObj.targetStatus === "ON") {
+                            messageBox.html(`<p>目标状态：${infoObj.targetStatus} </p>
+            <p>目标距离：${infoObj.targetDistance}cm</p>`)
+                        } else {
+                            messageBox.html(`<p>目标状态：${infoObj.targetStatus} </p>
+            <p>目标距离：0cm</p>`)
+                        }
+                        if (infoObj.targetStatus == "ON") {
+                            ifHasPerson(true)
+                        } else {
+                            ifHasPerson(false)
+                        }
+                    } else {
+                        messageBox.html(`<p>目标状态：${infoObj.targetStatus} </p>
             <p>运动目标距离：${infoObj.motionTargetDistance}</p>
             <p>运动目标能量：${infoObj.motionTargetEnergy}</p>
             <p>静止目标距离：${infoObj.stationaryTargetDistance}</p>
             <p>静止目标能量：${infoObj.stationaryTargetEnergy}</p>
             <p>运动距离门能量(0-6)：${infoObj.m0Energy},${infoObj.m1Energy},${infoObj.m2Energy},${infoObj.m3Energy},${infoObj.m4Energy},${infoObj.m5Energy}</p>
             <p>静止距离门能量(0-6)：${infoObj.s0Energy},${infoObj.s1Energy},${infoObj.s2Energy},${infoObj.s3Energy},${infoObj.s4Energy},${infoObj.s5Energy}</p>`)
-                    if (infoObj.io6 == "1") {
-                        ifHasPerson(true)
-                    } else {
-                        ifHasPerson(false)
+                        if (infoObj.io6 == "1") {
+                            ifHasPerson(true)
+                        } else {
+                            ifHasPerson(false)
+                        }
+                        updateChartData([infoObj.m0Energy, infoObj.m1Energy, infoObj.m2Energy, infoObj.m3Energy, infoObj.m4Energy, infoObj.m5Energy], [infoObj.s0Energy, infoObj.s1Energy, infoObj.s2Energy, infoObj.s3Energy, infoObj.s4Energy, infoObj.s5Energy])
                     }
-
-                    updateChartData([infoObj.m0Energy, infoObj.m1Energy, infoObj.m2Energy, infoObj.m3Energy, infoObj.m4Energy, infoObj.m5Energy], [infoObj.s0Energy, infoObj.s1Energy, infoObj.s2Energy, infoObj.s3Energy, infoObj.s4Energy, infoObj.s5Energy])
-
                 })
                 client.on('connect', function () {
                     console.log('Connect To MQTTServer OK')
