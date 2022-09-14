@@ -241,7 +241,12 @@
                             messageBox.html(`<p>目标状态：${infoObj.targetStatus} </p>
             <p>目标距离：0cm</p>`)
                         }
-                        if (infoObj.targetStatus == "ON") {
+                        // if (infoObj.targetStatus == "ON") {
+                        //     ifHasPerson(true)
+                        // } else {
+                        //     ifHasPerson(false)
+                        // }
+                        if (infoObj.io6 == "1") {
                             ifHasPerson(true)
                         } else {
                             ifHasPerson(false)

@@ -5,7 +5,7 @@ tag = PROJECT
 
 sys = require("sys")
 
-MOD_TYPE = "101pro"
+MOD_TYPE = "101"
 
 SSID, PASSWD = "Xiaomi_AX6000", "Air123456"
 -- SSID, PASSWD = "hgz", "12345678"
@@ -19,7 +19,7 @@ targetStatusTable = {
 
 mqttClient = nil
 
-DEVICE_ID = "Jeremy"
+DEVICE_ID = "test038"
 MQTT_TOPIC = "/luatos/esp32c3/MillimeterWave/" .. DEVICE_ID
 
 SEND_TO_SERVER = true
@@ -194,7 +194,7 @@ sys.taskInit(function()
         local data = uart.read(id, len)
 
         if MOD_TYPE == "101" then
-            -- log.info(tag .. ".data", data)
+            log.info(tag .. ".data", data)
             -- ---ON---(R = 126)
             local targetStatus = string.match(data, "%a+")
             local targetDistance = string.match(data, "%d+")
@@ -204,6 +204,7 @@ sys.taskInit(function()
             targetInfo["mod"] = "101"
             targetInfo["targetStatus"] = targetStatus
             targetInfo["targetDistance"] = targetDistance
+            targetInfo["io6"] = gpio6()
             local infoString = json.encode(targetInfo)
             -- printTable(targetInfo)
             sys.publish("TARGET_INFO", infoString)
